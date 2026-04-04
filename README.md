@@ -1,8 +1,8 @@
 # Field Theory CLI
 
-Self-custody for your X/Twitter bookmarks. Sync them locally, search with full-text, classify into categories, and point an AI agent at them.
+Sync and store locally all of your X/Twitter bookmarks. Search, classify, and make them available to Claude Code, Codex, or any agent with shell access.
 
-Your bookmarks stay on your machine. No account required. Free and open source.
+Free and open source. Designed for Mac.
 
 ## Install
 
@@ -10,7 +10,7 @@ Your bookmarks stay on your machine. No account required. Free and open source.
 npm install -g fieldtheory
 ```
 
-Requires Node.js 20+.
+Requires Node.js 20+ and Google Chrome.
 
 ## Quick start
 
@@ -27,63 +27,47 @@ ft categories
 ft stats
 ```
 
-On first run, `ft sync` extracts your X session from Chrome and downloads your bookmarks into `~/.ft-bookmarks/`. It auto-classifies them into 7 categories (tool, security, technique, launch, research, opinion, commerce) using fast regex matching.
+On first run, `ft sync` extracts your X session from Chrome and downloads your bookmarks into `~/.ft-bookmarks/`. It auto-classifies them into 7 categories using fast regex matching.
 
 ## Commands
 
 | Command | Description |
 |---------|-------------|
-| `ft sync` | Sync bookmarks via Chrome session |
-| `ft sync --api` | Sync via OAuth API (cross-platform) |
-| `ft search <query>` | Full-text search (FTS5 with BM25 ranking) |
-| `ft list` | List with filters (author, date, category, domain) |
-| `ft show <id>` | Show one bookmark in detail |
-| `ft stats` | Aggregate statistics |
-| `ft viz` | ANSI terminal dashboard with sparklines and heatmaps |
-| `ft classify` | Regex classification (instant, free) |
-| `ft classify --deep` | LLM classification (needs `claude` or `codex` in PATH) |
-| `ft classify-domains` | LLM domain classification (ai, finance, devops, etc.) |
+| `ft sync` | Download and sync all bookmarks (no API required) |
+| `ft search <query>` | Full-text search with BM25 ranking |
+| `ft viz` | Terminal dashboard with sparklines and heatmaps |
+| `ft classify` | LLM classification via Claude or Codex |
+| `ft classify --regex` | Fast regex classification |
+| `ft classify-domains` | LLM domain classification (ai, finance, etc.) |
 | `ft categories` | Show category distribution |
-| `ft domains` | Show domain distribution |
+| `ft stats` | Top authors, languages, date range |
+| `ft list` | Filter by author, date, category, domain |
+| `ft domains` | Subject domain distribution |
+| `ft show <id>` | Show one bookmark in detail |
 | `ft index` | Rebuild the SQLite search index |
-| `ft auth` | Set up OAuth for API-based sync |
+| `ft auth` | Set up OAuth for API-based sync (optional) |
+| `ft sync --api` | Sync via OAuth API (cross-platform) |
+| `ft fetch-media` | Download media assets (static images only) |
 | `ft status` | Show sync status and data location |
 | `ft path` | Print data directory path |
-| `ft sample <category>` | Sample bookmarks by category |
-| `ft fetch-media` | Download media assets |
 
 ## Agent integration
 
-The CLI is designed to work with AI agents. Add these tools to your agent's system prompt or `CLAUDE.md`:
+Now you can ask your agent:
 
-```
-Use the ft CLI to query the user's X bookmarks:
-  - ft search <query>     — full-text search
-  - ft list --category X  — list by category
-  - ft categories         — see all categories
-  - ft stats              — aggregate statistics
-```
+> "What have I bookmarked about cancer research in the last three years and how has it progressed?"
 
-**Fun prompt to try:**
+> "I bookmarked a number of new open source AI memory tools. Pick the best one and figure out how to incorporate it in this repo."
 
-> "Take my oldest and newest bookmarks and tell me how my interests have changed over time."
+> "Every day please sync any new X bookmarks using the Field Theory CLI."
 
-Works with Claude Code, Codex, or any agent with shell access.
+Works with Claude Code, Codex, or any agent with shell access. Just tell your agent to use the `ft` CLI.
 
 ## Scheduling
-
-Sync daily with crontab:
 
 ```bash
 # Sync every morning at 7am
 0 7 * * * ft sync
-```
-
-For API-based sync (no Chrome needed), set up OAuth first:
-
-```bash
-ft auth          # one-time OAuth setup
-ft sync --api    # uses API token, works headlessly
 ```
 
 ## Data
@@ -104,19 +88,21 @@ Override the location with `FT_DATA_DIR`:
 export FT_DATA_DIR=/path/to/custom/dir
 ```
 
+To remove all data: `rm -rf ~/.ft-bookmarks`
+
 ## Categories
 
-The regex classifier sorts bookmarks into 7 categories:
+| Category | What it catches |
+|----------|----------------|
+| **tool** | GitHub repos, CLI tools, npm packages, open-source projects |
+| **security** | CVEs, vulnerabilities, exploits, supply chain |
+| **technique** | Tutorials, demos, code patterns, "how I built X" |
+| **launch** | Product launches, announcements, "just shipped" |
+| **research** | ArXiv papers, studies, academic findings |
+| **opinion** | Takes, analysis, commentary, threads |
+| **commerce** | Products, shopping, physical goods |
 
-- **tool** — GitHub repos, CLI tools, npm packages, open-source projects
-- **security** — CVEs, vulnerabilities, exploits, supply chain
-- **technique** — Tutorials, demos, code patterns, "how I built X"
-- **launch** — Product launches, announcements, "just shipped"
-- **research** — ArXiv papers, studies, academic findings
-- **opinion** — Takes, analysis, commentary, threads
-- **commerce** — Products, shopping, physical goods
-
-Use `ft classify --deep` for LLM-powered classification that catches what regex misses.
+Use `ft classify` for LLM-powered classification that catches what regex misses.
 
 ## Platform support
 
@@ -130,14 +116,14 @@ Use `ft classify --deep` for LLM-powered classification that catches what regex 
 
 ## Security
 
-**Your data stays local.** The CLI makes no network requests except to X's API during sync. No telemetry, no analytics, nothing phoned home.
+**Your data stays local.** No telemetry, no analytics, nothing phoned home. The CLI only makes network requests to X's API during sync.
 
-**Chrome session sync (`ft sync`)** reads cookies from Chrome's local database to authenticate with X. This uses the same mechanism as browser extensions. Your cookies are never stored separately — they're read, used for the sync request, and discarded. This requires Chrome to be installed and logged into X.
+**Chrome session sync** reads cookies from Chrome's local database, uses them for the sync request, and discards them. Cookies are never stored separately.
 
-**OAuth tokens** are stored at `~/.ft-bookmarks/oauth-token.json` with `chmod 600` (owner-only read/write). If you use API mode, treat this file like a password.
+**OAuth tokens** are stored with `chmod 600` (owner-only). Treat `~/.ft-bookmarks/oauth-token.json` like a password.
 
-**The default sync method uses X's internal GraphQL API**, the same API that x.com uses in your browser. If you prefer to use the official v2 API with your own keys, use `ft auth` + `ft sync --api`.
+**The default sync uses X's internal GraphQL API**, the same API that x.com uses in your browser. For the official v2 API, use `ft auth` + `ft sync --api`.
 
 ## License
 
-MIT
+MIT — [fieldtheory.dev/cli](https://fieldtheory.dev/cli)
