@@ -33,6 +33,7 @@ const GRAPHQL_FEATURES = {
   responsive_web_enhance_cards_enabled: false,
   tweet_with_visibility_results_prefer_gql_limited_actions_policy_enabled: true,
   responsive_web_media_download_video_enabled: false,
+  longform_notetweets_consumption_enabled: true,
 };
 
 export interface SyncOptions {
@@ -129,12 +130,17 @@ async function loadExistingBookmarks(): Promise<BookmarkRecord[]> {
   }
 }
 
+const GRAPHQL_FIELD_TOGGLES = {
+  withArticlePlainText: true,
+};
+
 function buildUrl(cursor?: string): string {
   const variables: Record<string, unknown> = { count: 20 };
   if (cursor) variables.cursor = cursor;
   const params = new URLSearchParams({
     variables: JSON.stringify(variables),
     features: JSON.stringify(GRAPHQL_FEATURES),
+    fieldToggles: JSON.stringify(GRAPHQL_FIELD_TOGGLES),
   });
   return `https://x.com/i/api/graphql/${BOOKMARKS_QUERY_ID}/${BOOKMARKS_OPERATION}?${params}`;
 }
@@ -163,6 +169,9 @@ export function convertTweetToRecord(tweetResult: any, now: string): BookmarkRec
 
   const tweetId = legacy.id_str ?? tweet?.rest_id;
   if (!tweetId) return null;
+
+  // For long-form tweets (X Premium), the full untruncated text is in note_tweet
+  const noteTweetText = tweet?.note_tweet?.note_tweet_results?.result?.text;
 
   const userResult = tweet?.core?.user_results?.result;
   const authorHandle = userResult?.core?.screen_name ?? userResult?.legacy?.screen_name;
@@ -217,7 +226,7 @@ export function convertTweetToRecord(tweetResult: any, now: string): BookmarkRec
     id: tweetId,
     tweetId,
     url: `https://x.com/${authorHandle ?? '_'}/status/${tweetId}`,
-    text: legacy.full_text ?? legacy.text ?? '',
+    text: noteTweetText ?? legacy.full_text ?? legacy.text ?? '',
     authorHandle,
     authorName,
     authorProfileImageUrl,
